@@ -41,10 +41,16 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BillingAddressInfo.cs" />
+    <Compile Include="CardInfo.cs" />
     <Compile Include="Class1.cs" />
+    <Compile Include="CustomerPaymentInfo.cs" />
     <Compile Include="IPaymentechGatewayFacade.cs" />
+    <Compile Include="NewOrderRequest.cs" />
+    <Compile Include="NewOrderResponse.cs" />
     <Compile Include="PaymentechGatewayFacade.cs" />
     <Compile Include="PaymentechGatewaySettings.cs" />
+    <Compile Include="PaymentStatus.cs" />
     <Compile Include="ProfileResponse.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Service References\PaymentechServiceReference\Reference.cs">
