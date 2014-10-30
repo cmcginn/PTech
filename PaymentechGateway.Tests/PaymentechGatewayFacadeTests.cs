@@ -65,6 +65,18 @@ namespace PaymentechGateway.Tests
             };
             return result;
         }
+
+        RecurringBillingRequest GetRecurringBillingRequest()
+        {
+            var result = new RecurringBillingRequest();
+            result.CustomerPaymentInfo = new CustomerPaymentInfo();
+            result.CustomerPaymentInfo.BillingAddressInfo = GetBillingAddressInfo();
+            result.CustomerPaymentInfo.CardInfo = GetCardInfo();
+            result.RecurringAmount = 10.00d;
+            result.StartDate = System.DateTime.UtcNow.AddDays(1);
+            result.RecurringFrequency = RecurringFrequency.Monthly;
+            return result;
+        }
         [TestMethod]
         public void CreatePaymentechProfileTest()
         {
@@ -74,7 +86,7 @@ namespace PaymentechGateway.Tests
             cp.BillingAddressInfo = GetBillingAddressInfo();
             var actual = target.CreatePaymentechProfile(cp);
             Assert.IsTrue(actual.Success);
-            Assert.IsTrue(actual.ProfileId > 0);
+            Assert.IsTrue(actual.CustomerRefNum > 0);
         }
 
         [TestMethod]
@@ -85,7 +97,15 @@ namespace PaymentechGateway.Tests
             var actual = target.ProcessNewOrderPayment(newOrder);
             Assert.IsTrue(actual.Success);
         }
-
+        [TestMethod]
+        public void CreatePaymentechRecurringProfileTest()
+        {
+            var target = GetTarget();
+            var request = GetRecurringBillingRequest();
+            var actual = target.CreatePaymentechRecurringProfile(request);
+            Assert.IsTrue(actual.CustomerRefNum > 0);
+            Assert.IsTrue(actual.Success);
+        }
         #region Conditional Check Tests
         [TestMethod]
         public void ProcessNewOrderPaymentTest_Check_AuthorizationCode_Exists()
@@ -131,6 +151,19 @@ namespace PaymentechGateway.Tests
             var actual = target.ProcessNewOrderPayment(newOrder);
             Assert.IsNotNull(actual.TransactionRequest);
             Assert.IsNotNull(actual.TransactionResponse);
+        }
+
+        [TestMethod]
+        public void CreatePaymentechProfileTest_When_LifetimeMembership_CheckMaxBilling()
+        {
+            //validated on payment gateway
+            var target = GetTarget();
+            var request = GetRecurringBillingRequest();
+            request.RecurringFrequency = RecurringFrequency.Lifetime;
+            request.RecurringAmount = 100.80d;
+            var actual = target.CreatePaymentechRecurringProfile(request);
+            Assert.IsTrue(actual.CustomerRefNum > 0);
+            Assert.IsTrue(actual.Success);
         }
         #endregion
     }

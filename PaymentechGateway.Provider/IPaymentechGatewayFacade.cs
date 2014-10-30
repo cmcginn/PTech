@@ -10,5 +10,6 @@ namespace PaymentechGateway.Provider
     {
         ProfileResponse CreatePaymentechProfile(CustomerPaymentInfo paymentInfo);
         NewOrderResponse ProcessNewOrderPayment(NewOrderRequest newOrderRequest);
+        ProfileResponse CreatePaymentechRecurringProfile(RecurringBillingRequest recurringBillingRequest);
     }
 }

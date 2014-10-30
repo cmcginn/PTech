@@ -38,9 +38,45 @@ namespace PaymentechGateway.Provider
         /// <returns></returns>
         private string GetAmount(double amount)
         {
-            return amount.ToString(CultureInfo.InvariantCulture).Replace(".", "");
+            return amount.ToString("0.00").Replace(".", "");
+        }
+        /// <summary>
+        /// Paymentech date formats are strings MMddyyyy
+        /// </summary>
+        /// <param name="source"></param>
+        /// <returns></returns>
+        private string GetDate(DateTime source)
+        {
+            var result = source.ToString("MMddyyyy");
+            return result;
         }
 
+        private string GetRecurringSchedule(RecurringBillingRequest request)
+        {
+            string result = "";
+            if (request.RecurringFrequency == RecurringFrequency.None)
+                throw new System.ArgumentException("Recurring Frequency must be set to Yearly or Monthly");
+            if (request.RecurringFrequency == RecurringFrequency.Monthly)
+            {
+                //billing start date must be 1 day in the future
+                if (request.StartDate.Date == System.DateTime.UtcNow.Date)
+                    throw new System.ArgumentException("Billing start date must be 1 day in the future");
+               //must be 1 day in the future
+                result = String.Format("{0} 1-12/{1} ?", ((int)request.StartDate.Day), 1);
+
+            }
+            //lifetime is included, schedule is arbirtary, max billings should be specified in request to 
+            //limit 1 billing
+            else if (request.RecurringFrequency == RecurringFrequency.Yearly ||
+                     request.RecurringFrequency == RecurringFrequency.Lifetime)
+            {
+                result = String.Format("{0} {1} ?", ((int) request.StartDate.Day), request.StartDate.Month);
+                return result;
+            }
+           
+     
+            return result;
+        }
         private static XElement SerializeNewOrderRequestElement(NewOrderRequestElement request)
         {
             var builder = new StringBuilder();
@@ -151,7 +187,7 @@ namespace PaymentechGateway.Provider
                 {
                     result.MerchantId = request.merchantID;
                     result.ProfileAction = ProfileAction.Create;
-                    result.ProfileId = long.Parse(response.customerRefNum);
+                    result.CustomerRefNum = long.Parse(response.customerRefNum);
                 }
                 else
                 {
@@ -201,10 +237,67 @@ namespace PaymentechGateway.Provider
             return result;
         }
 
-       
+        public ProfileResponse CreatePaymentechRecurringProfile(RecurringBillingRequest recurringBillingRequest)
+        {
+            var result = new ProfileResponse();
+            try
+            {
+                var request = MapRecurringProfileAddElement(recurringBillingRequest);
+                var client = GetClient();
+                var response = client.ProfileAdd(request);
+                if (response.procStatus == "0" && response.procStatusMessage == "Profile Request Processed")
+                {
+                    result.MerchantId = _settings.RecurringMerchantId;
+                    result.ProfileAction = ProfileAction.Create;
+                    result.CustomerRefNum = long.Parse(response.customerRefNum);
+
+                }
+                else
+                {
+                    result.ErrorMessage = response.procStatusMessage;
+                }
+            }
+            catch (System.Exception ex)
+            {
+                result.ErrorMessage = ex.GetBaseException().Message;
+            }
+            return result;
+        }
         #endregion
 
         #region Mapping
+
+        private ProfileAddElement MapRecurringProfileAddElement(RecurringBillingRequest request)
+        {
+            var result = MapProfileAddElement(request.CustomerPaymentInfo);
+            result.merchantID = _settings.RecurringMerchantId;
+
+            var recurringAmount = GetAmount(request.RecurringAmount);
+            if (request.StartDate.Date == System.DateTime.UtcNow.Date)
+                throw new System.ArgumentException("Billing start date must be 1 day in the future");
+            result.mbRecurringStartDate = GetDate(request.StartDate);
+            //579 days is limit otherwise, do not specify end date
+            if (request.EndDate.HasValue && (request.EndDate.Value - request.StartDate).TotalDays < 579)
+                result.mbRecurringEndDate = GetDate(request.EndDate.Value);
+            else
+                result.mbRecurringNoEndDateFlag = "Y";
+            result.mbType = "R";
+            result.mbRecurringNoEndDateFlag = "Y";
+            result.mbRecurringFrequency = GetRecurringSchedule(request);
+            if (request.RecurringFrequency == RecurringFrequency.Lifetime)
+            {
+                result.mbRecurringMaxBillings = "1";
+                result.mbRecurringEndDate = null;
+                result.mbRecurringNoEndDateFlag = null;
+            }
+            result.orderDefaultAmount = GetAmount(request.RecurringAmount);
+            result.mbOrderIdGenerationMethod = "DI";
+            return result;
+
+        }
+
+
+
         private NewOrderRequestElement MapNewOrderRequestElement(NewOrderRequest request)
         {
             var result = new NewOrderRequestElement();

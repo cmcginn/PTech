@@ -53,6 +53,7 @@
     <Compile Include="PaymentStatus.cs" />
     <Compile Include="ProfileResponse.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RecurringBillingRequest.cs" />
     <Compile Include="Service References\PaymentechServiceReference\Reference.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
