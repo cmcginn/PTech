@@ -85,5 +85,53 @@ namespace PaymentechGateway.Tests
             var actual = target.ProcessNewOrderPayment(newOrder);
             Assert.IsTrue(actual.Success);
         }
+
+        #region Conditional Check Tests
+        [TestMethod]
+        public void ProcessNewOrderPaymentTest_Check_AuthorizationCode_Exists()
+        {
+            var target = GetTarget();
+            var newOrder = GetNewOrderRequest();
+            var actual = target.ProcessNewOrderPayment(newOrder);
+            Assert.IsTrue(!String.IsNullOrEmpty(actual.ApprovalCode));
+        }
+        [TestMethod]
+        public void ProcessNewOrderPaymentTest_WhenShippingRequired_CheckPaymentStatus_Authorized()
+        {
+            var target = GetTarget();
+            var newOrder = GetNewOrderRequest();
+            newOrder.ShippingRequired = true;
+            var actual = target.ProcessNewOrderPayment(newOrder);
+            Assert.IsTrue(actual.PaymentStatus == PaymentStatus.Authorized);
+        }
+        [TestMethod]
+        public void ProcessNewOrderPaymentTest_WhenShippingNotRequired_CheckPaymentStatus_AuthorizedForCapture()
+        {
+            var target = GetTarget();
+            var newOrder = GetNewOrderRequest();
+            newOrder.ShippingRequired = false;
+            var actual = target.ProcessNewOrderPayment(newOrder);
+            Assert.IsTrue(actual.PaymentStatus == PaymentStatus.AuthorizedForCapture);
+        }
+        [TestMethod]
+        public void ProcessNewOrderPaymentTest_TransactionRefNum_Exists()
+        {
+            var target = GetTarget();
+            var newOrder = GetNewOrderRequest();
+            newOrder.ShippingRequired = false;
+            var actual = target.ProcessNewOrderPayment(newOrder);
+            Assert.IsFalse(String.IsNullOrEmpty(actual.TransactionRefNum));
+        }
+        [TestMethod]
+        public void ProcessNewOrderPaymentTest_TransactionRequest_TransactionResult_Exists()
+        {
+            var target = GetTarget();
+            var newOrder = GetNewOrderRequest();
+            newOrder.ShippingRequired = false;
+            var actual = target.ProcessNewOrderPayment(newOrder);
+            Assert.IsNotNull(actual.TransactionRequest);
+            Assert.IsNotNull(actual.TransactionResponse);
+        }
+        #endregion
     }
 }

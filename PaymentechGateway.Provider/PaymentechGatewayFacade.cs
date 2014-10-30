@@ -68,7 +68,7 @@ namespace PaymentechGateway.Provider
         private static XElement SerializeNewOrderResponse(NewOrderResponseElement response)
         {
             var builder = new StringBuilder();
-            var serializer = new XmlSerializer(typeof(NewOrderRequestElement));
+            var serializer = new XmlSerializer(typeof(NewOrderResponseElement));
             using (var writer = new StringWriter(builder))
             {
                 serializer.Serialize(writer, response);
@@ -176,8 +176,10 @@ namespace PaymentechGateway.Provider
                 var client = GetClient();
                 var response = client.NewOrder(request);
                 result.TransactionResponse = SerializeNewOrderResponse(response);
-                if (response.procStatus == "0" && response.approvalStatus=="APPROVED")
+                if (response.procStatus == "0" && response.procStatusMessage.ToLower()=="approved")
                 {
+                    result.ApprovalCode = response.authorizationCode;
+                    result.TransactionRefNum = response.txRefNum;
                     if (response.transType == "AC")
                         result.PaymentStatus = PaymentStatus.AuthorizedForCapture;
                     else if (response.transType == "A")
@@ -198,6 +200,8 @@ namespace PaymentechGateway.Provider
             }
             return result;
         }
+
+       
         #endregion
 
         #region Mapping
@@ -223,7 +227,7 @@ namespace PaymentechGateway.Provider
                 result.taxAmount = GetAmount(request.OrderTax);
                 result.taxInd = "1";
             }
-            result.transType = request.ShippingRequired ? "AC" : "A";
+            result.transType = request.ShippingRequired ? "A" : "AC";
             return result;
         }
         private ProfileAddElement MapProfileAddElement(CustomerPaymentInfo paymentInfo)

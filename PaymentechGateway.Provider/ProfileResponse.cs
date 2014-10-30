@@ -21,5 +21,7 @@ namespace PaymentechGateway.Provider
         public string ErrorMessage { get; set; }
         public string MerchantId { get; set; }
         public ProfileAction ProfileAction { get; set; }
+
+        
     }
 }
