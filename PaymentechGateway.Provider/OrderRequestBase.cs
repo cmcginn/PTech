@@ -13,6 +13,5 @@ namespace PaymentechGateway.Provider
         public virtual double OrderTax { get; set; }
         public virtual bool ShippingRequired { get; set; }
 
-        public virtual string MerchantId { get; set; }
     }
 }

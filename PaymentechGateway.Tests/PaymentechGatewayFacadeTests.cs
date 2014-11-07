@@ -86,18 +86,25 @@ namespace PaymentechGateway.Tests
             cp.CardInfo = GetCardInfo();
             cp.BillingAddressInfo = GetBillingAddressInfo();
             var result = target.CreatePaymentechProfile(cp);
+   
             return result;
         }
         #endregion
+        #region Create Payment Profile Tests
         [TestMethod]
         public void CreatePaymentechProfileTest()
         {
 
             var actual = CreatePaymentechProfile();
             Assert.IsTrue(actual.Success);
-            Assert.IsTrue(long.Parse(actual.CustomerRefNum) > 0);
+            Assert.IsTrue(long.Parse(actual.CustomerRefNum) > 0, "Expected Long Customer Ref Num > 0");
+            Assert.IsTrue(actual.ProfileAction == ProfileAction.Create, "Expected Profile type Create");
+            Assert.IsTrue(actual.MerchantId == ConfigurationManager.AppSettings["merchantid"],
+                "Expected Standard Merchant Id");
         }
+        #endregion
 
+        #region IPaymentechFacade CreatePaymentechProfile Tests
         [TestMethod]
         public void ProcessNewOrderPaymentTest()
         {
@@ -106,6 +113,7 @@ namespace PaymentechGateway.Tests
             var actual = target.ProcessNewOrderPayment(newOrder);
             Assert.IsTrue(actual.Success);
         }
+        #endregion
         [TestMethod]
         public void CreatePaymentechRecurringProfileTest()
         {
@@ -183,7 +191,7 @@ namespace PaymentechGateway.Tests
             var target = GetTarget();
             var newOrder = GetNewOrderRequest();
             var order = target.ProcessNewOrderPayment(newOrder);
-            var request = new PriorOrderRequest {TransactionRefNum = order.TransactionRefNum, MerchantId = order.MerchantId, GatewayOrderId=order.GatewayOrderId};
+            var request = new PriorOrderRequest {TransactionRefNum = order.TransactionRefNum, GatewayOrderId=order.GatewayOrderId};
             var actual = target.Void(request);
 
         }

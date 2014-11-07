@@ -302,10 +302,10 @@ namespace PaymentechGateway.Provider
             }
             return result;
         }
-        public OrderResponse Refund(PriorOrderRequest refundPaymentRequest)
+        public OrderResponse Refund(PriorOrderRequest refundPaymentRequest,bool recurring=false)
         {
             var result = new OrderResponse();
-            var request = MapNewOrderRefundRequest(refundPaymentRequest);
+            var request = MapNewOrderRefundRequest(refundPaymentRequest,recurring);
             var client = GetClient();
             var response = client.NewOrder(request);
             if (response.procStatus == "0")
@@ -324,10 +324,10 @@ namespace PaymentechGateway.Provider
             return result;
         }
 
-        public OrderResponse Void(PriorOrderRequest voidPaymentRequest)
+        public OrderResponse Void(PriorOrderRequest voidPaymentRequest, bool recurring = false)
         {
             OrderResponse result = null;
-            var request = MapReversalElement(voidPaymentRequest);
+            var request = MapReversalElement(voidPaymentRequest,recurring);
             var c = GetClient();
             var response = c.Reversal(request);
             result = new OrderResponse();
@@ -348,15 +348,15 @@ namespace PaymentechGateway.Provider
             return result;
         }
 
-        public ProfileResponse CancelRecurringProfile(string customerRefNum)
+        public ProfileResponse CancelProfile(string customerRefNum, bool recurring = false)
         {
             throw new System.NotImplementedException();
         }
 
-        public ProfileResponse UpdateProfile(CustomerProfile customerProfile)
+        public ProfileResponse UpdateProfile(CustomerProfile customerProfile, bool recurring = false)
         {
             ProfileResponse result = null;
-            var request = MapProfileChangeElement(customerProfile);
+            var request = MapProfileChangeElement(customerProfile,recurring);
             
             var client = GetClient();
             var response = client.ProfileChange(request);
@@ -368,9 +368,9 @@ namespace PaymentechGateway.Provider
         #region Requests
 
         
-        private NewOrderRequestElement MapNewOrderRequest(OrderRequestBase request)
+        private NewOrderRequestElement MapNewOrderRequest(OrderRequestBase request,bool recurring=false)
         {
-            var result = MapNewOrderRequestBase(request);
+            var result = MapNewOrderRequestBase(request,recurring);
             result.transType = request.ShippingRequired ? "A" : "AC";
             return result;
         }
@@ -380,19 +380,20 @@ namespace PaymentechGateway.Provider
             result.transType = "FC";
             return result;
         }
-        private NewOrderRequestElement MapNewOrderRefundRequest(PriorOrderRequest request)
+        private NewOrderRequestElement MapNewOrderRefundRequest(PriorOrderRequest request,bool recurring=false)
         {
-            var result = MapPriorOrderRequest(request);
+            var result = MapPriorOrderRequest(request,recurring);
             result.transType = "R";
             return result;
         }
-        private NewOrderRequestElement MapPriorOrderRequest(PriorOrderRequest request)
+        private NewOrderRequestElement MapPriorOrderRequest(PriorOrderRequest request,bool recurring=false)
         {
             var result = new NewOrderRequestElement();
             result.amount = GetAmount(request.TransactionTotal);
             result.bin = _settings.Bin;
             result.orbitalConnectionUsername = _settings.Username;
             result.orbitalConnectionPassword = _settings.Password;
+            result.merchantID = recurring ? _settings.RecurringMerchantId : _settings.MerchantId;
             result.terminalID = _settings.TerminalId;
             result.merchantID = _settings.MerchantId;
             result.orderID = request.GatewayOrderId;
@@ -433,7 +434,7 @@ namespace PaymentechGateway.Provider
             result.orderID = request.GatewayOrderId;
             return result;
         }
-        private NewOrderRequestElement MapNewOrderRequestBase(OrderRequestBase request)
+        private NewOrderRequestElement MapNewOrderRequestBase(OrderRequestBase request,bool recurring = false)
         {
             var result = new NewOrderRequestElement();
             result.amount = GetAmount(request.TransactionTotal);
@@ -441,7 +442,7 @@ namespace PaymentechGateway.Provider
             result.orbitalConnectionUsername = _settings.Username;
             result.orbitalConnectionPassword = _settings.Password;
             result.terminalID = _settings.TerminalId;
-            result.merchantID = _settings.MerchantId;
+            result.merchantID = recurring ? _settings.RecurringMerchantId : _settings.MerchantId;
 
             result.customerRefNum = request.CustomerRefNum;
             result.industryType = "EC";
@@ -525,13 +526,13 @@ namespace PaymentechGateway.Provider
 
         }
 
-        private ProfileChangeElement MapProfileChangeElement(CustomerProfile customerProfile)
+        private ProfileChangeElement MapProfileChangeElement(CustomerProfile customerProfile, bool recurring = false)
         {
             var result = new ProfileChangeElement();
             result.version = "2.8";
             result.orbitalConnectionPassword = _settings.Password;
             result.orbitalConnectionUsername = _settings.Username;
-            result.merchantID = customerProfile.MerchantId;
+            result.merchantID = recurring ? _settings.RecurringMerchantId : _settings.MerchantId;
             result.bin = _settings.Bin;
             var eligibleAccountUpdaterBrands = new List<string> { "visa", "mastercard" };
             var brand = customerProfile.CardInfo.CardBrand;
@@ -562,7 +563,7 @@ namespace PaymentechGateway.Provider
             }
             return result;
         }
-        private ReversalElement MapReversalElement(PriorOrderRequest request)
+        private ReversalElement MapReversalElement(PriorOrderRequest request,bool recurring=false)
         {
             var result = new ReversalElement();
             result.version = "2.8";
@@ -572,7 +573,7 @@ namespace PaymentechGateway.Provider
             result.terminalID = _settings.TerminalId;
             result.txRefNum = request.TransactionRefNum;
             result.orderID = request.GatewayOrderId;
-            result.merchantID = request.MerchantId;
+            result.merchantID = recurring ? _settings.RecurringMerchantId : _settings.MerchantId;
             return result;
         }
         #endregion

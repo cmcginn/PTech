@@ -12,10 +12,10 @@ namespace PaymentechGateway.Provider
         OrderResponse ProcessNewOrderPayment(OrderRequest newOrderRequest);
         ProfileResponse CreatePaymentechRecurringProfile(RecurringCustomerProfile recurringBillingRequest);
         OrderResponse CaptureAuthPayment(PriorOrderRequest captureAuthPaymentRequest);
-        OrderResponse Refund(PriorOrderRequest refundPaymentRequest);
-        OrderResponse Void(PriorOrderRequest voidPaymentRequest);
+        OrderResponse Refund(PriorOrderRequest refundPaymentRequest,bool recurring=false);
+        OrderResponse Void(PriorOrderRequest voidPaymentRequest, bool recurring = false);
         ProfileResponse FetchProfile(string customerRefNum, bool recurring = false);
-        ProfileResponse CancelRecurringProfile(string customerRefNum);
-        ProfileResponse UpdateProfile(CustomerProfile customerProfile);
+        ProfileResponse CancelProfile(string customerRefNum, bool recurring = false);
+        ProfileResponse UpdateProfile(CustomerProfile customerProfile, bool recurring = false);
     }
 }
