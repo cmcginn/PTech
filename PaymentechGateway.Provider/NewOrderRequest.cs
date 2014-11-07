@@ -6,7 +6,10 @@ using System.Threading.Tasks;
 
 namespace PaymentechGateway.Provider
 {
-    public class Class1
+    public class NewOrderRequest : OrderRequestBase
     {
+
     }
+
+   
 }

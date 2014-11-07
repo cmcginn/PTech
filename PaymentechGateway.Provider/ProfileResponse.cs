@@ -12,14 +12,15 @@ namespace PaymentechGateway.Provider
         Create=1,
         Update=2,
         Suspend=3,
-        Delete=4
+        Delete=4,
+        Fetch=5
     }
-    public class ProfileResponse
+    public class ProfileResponse:CustomerProfile
     {
-        public string CustomerRefNum { get; set; }
+        
         public bool Success { get { return String.IsNullOrEmpty(ErrorMessage); } }
         public string ErrorMessage { get; set; }
-        public string MerchantId { get; set; }
+        
         public ProfileAction ProfileAction { get; set; }
 
         

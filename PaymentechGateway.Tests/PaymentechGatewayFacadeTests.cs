@@ -31,7 +31,7 @@ namespace PaymentechGateway.Tests
             result.CustomerRefNum = "49100650";
             result.GatewayOrderId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 22);
             result.OrderShipping = 5.00d;
-            result.OrderTotal = 100.20d;
+            result.TransactionTotal = 100.20d;
             result.OrderTax = 3.50d;
             result.ShippingRequired = true;
             return result;
@@ -66,12 +66,11 @@ namespace PaymentechGateway.Tests
             return result;
         }
 
-        RecurringBillingRequest GetRecurringBillingRequest()
+        RecurringCustomerProfile GetRecurringBillingRequest()
         {
-            var result = new RecurringBillingRequest();
-            result.CustomerPaymentInfo = new CustomerPaymentInfo();
-            result.CustomerPaymentInfo.BillingAddressInfo = GetBillingAddressInfo();
-            result.CustomerPaymentInfo.CardInfo = GetCardInfo();
+            var result = new RecurringCustomerProfile();
+            result.BillingAddressInfo = GetBillingAddressInfo();
+            result.CardInfo = GetCardInfo();
             result.RecurringAmount = 10.00d;
             result.StartDate = System.DateTime.UtcNow.AddDays(1);
             result.RecurringFrequency = RecurringFrequency.Monthly;
@@ -83,7 +82,7 @@ namespace PaymentechGateway.Tests
         ProfileResponse CreatePaymentechProfile()
         {
             var target = GetTarget();
-            var cp = new CustomerPaymentInfo { EmailAddress = "GoodRGCustomer@donotresolve.com" };
+            var cp = new CustomerProfile { EmailAddress = "GoodRGCustomer@donotresolve.com" };
             cp.CardInfo = GetCardInfo();
             cp.BillingAddressInfo = GetBillingAddressInfo();
             var result = target.CreatePaymentechProfile(cp);
@@ -126,10 +125,10 @@ namespace PaymentechGateway.Tests
             authOrder.CustomerRefNum = profile.CustomerRefNum;
             authOrder.ShippingRequired = true;
             var authResponse = target.ProcessNewOrderPayment(authOrder);
-            var request = new CaptureAuthPaymentRequest();
+            var request = new PriorOrderRequest();
             request.CustomerRefNum = authOrder.CustomerRefNum;
             request.TransactionRefNum = authResponse.TransactionRefNum;
-            request.OrderTotal = authOrder.OrderTotal;
+            request.TransactionTotal = authOrder.TransactionTotal;
             request.OrderTax = authOrder.OrderTax;
             request.AuthorizationCode = authResponse.AuthorizationCode;
             request.GatewayOrderId = authOrder.GatewayOrderId;
@@ -145,12 +144,11 @@ namespace PaymentechGateway.Tests
             var refundOrder = GetNewOrderRequest();
             refundOrder.CustomerRefNum = profile.CustomerRefNum;
             var refundResponse = target.ProcessNewOrderPayment(refundOrder);
-            var request = new RefundPaymentRequest();
+            var request = new PriorOrderRequest();
             request.CustomerRefNum = refundOrder.CustomerRefNum;
             request.TransactionRefNum = refundResponse.TransactionRefNum;
-            request.OrderTotal = refundOrder.OrderTotal;
+            request.TransactionTotal = refundOrder.TransactionTotal;
             request.OrderTax = refundOrder.OrderTax;
-            request.RefundTotal = refundOrder.OrderTotal;
             request.AuthorizationCode = refundResponse.AuthorizationCode;
             request.GatewayOrderId = refundOrder.GatewayOrderId;
             target.Refund(request);

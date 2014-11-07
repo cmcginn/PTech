@@ -10,7 +10,6 @@ namespace PaymentechGateway.Provider
     {
         public string CardholderName { get; set; }
         public string CardNumber { get; set; }
-
         public string MaskedCardNumber { get; set; }
         //MMYYYY
         public string ExpirationDate { get; set; }

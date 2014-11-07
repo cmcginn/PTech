@@ -42,21 +42,21 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BillingAddressInfo.cs" />
-    <Compile Include="CaptureAuthPaymentRequest.cs" />
-    <Compile Include="CaptureRequest.cs" />
     <Compile Include="CardInfo.cs" />
-    <Compile Include="Class1.cs" />
-    <Compile Include="CustomerPaymentInfo.cs" />
+    <Compile Include="CustomerProfile.cs" />
     <Compile Include="IPaymentechGatewayFacade.cs" />
     <Compile Include="NewOrderRequest.cs" />
     <Compile Include="NewOrderResponse.cs" />
+    <Compile Include="OrderBase.cs" />
+    <Compile Include="OrderRequestBase.cs" />
+    <Compile Include="OrderResponseBase.cs" />
     <Compile Include="PaymentechGatewayFacade.cs" />
     <Compile Include="PaymentechGatewaySettings.cs" />
     <Compile Include="PaymentStatus.cs" />
+    <Compile Include="PriorOrderRequest.cs" />
     <Compile Include="ProfileResponse.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="RecurringBillingRequest.cs" />
-    <Compile Include="RefundPaymentRequest.cs" />
+    <Compile Include="RecurringCustomerProfile.cs" />
     <Compile Include="Service References\PaymentechServiceReference\Reference.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>

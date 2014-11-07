@@ -6,16 +6,14 @@ using System.Threading.Tasks;
 
 namespace PaymentechGateway.Provider
 {
-    public class RecurringBillingRequest
+    public class RecurringCustomerProfile:CustomerProfile
     {
 
         public RecurringFrequency RecurringFrequency { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime? EndDate { get; set; }
         public double RecurringAmount { get; set; }
-        public CustomerPaymentInfo CustomerPaymentInfo { get; set; }
 
-        public BillingAddressInfo BillingAddressInfo { get; set; }
     }
 
     public enum RecurringFrequency
