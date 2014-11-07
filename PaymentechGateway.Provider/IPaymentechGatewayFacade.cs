@@ -11,5 +11,7 @@ namespace PaymentechGateway.Provider
         ProfileResponse CreatePaymentechProfile(CustomerPaymentInfo paymentInfo);
         NewOrderResponse ProcessNewOrderPayment(NewOrderRequest newOrderRequest);
         ProfileResponse CreatePaymentechRecurringProfile(RecurringBillingRequest recurringBillingRequest);
+        NewOrderResponse MarkForCapture(CaptureAuthPaymentRequest captureAuthPaymentRequest);
+        NewOrderResponse CaptureAuthPayment(CaptureAuthPaymentRequest captureAuthPaymentRequest);
     }
 }

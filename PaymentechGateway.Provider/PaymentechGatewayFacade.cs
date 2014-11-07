@@ -29,7 +29,6 @@ namespace PaymentechGateway.Provider
             return result;
         }
         #endregion
-
         #region Utilities
         /// <summary>
         /// Paymentech amount formats are strings with no decimal (i.e $10.00 = 1000)
@@ -61,7 +60,7 @@ namespace PaymentechGateway.Provider
                 //billing start date must be 1 day in the future
                 if (request.StartDate.Date == System.DateTime.UtcNow.Date)
                     throw new System.ArgumentException("Billing start date must be 1 day in the future");
-               //must be 1 day in the future
+
                 result = String.Format("{0} 1-12/{1} ?", ((int)request.StartDate.Day), 1);
 
             }
@@ -99,6 +98,34 @@ namespace PaymentechGateway.Provider
                 un.Value = "XXXXX";
             if (pw != null)
                 pw.Value = "XXXXX";
+            return result;
+        }
+
+        private static XElement SerializeMarkForCaptureRequest(MarkForCaptureElement request)
+        {
+            var builder = new StringBuilder();
+            var serializer = new XmlSerializer(typeof(MarkForCaptureElement));
+            using (var writer = new StringWriter(builder))
+            {
+                serializer.Serialize(writer, request);
+            }
+            var result = XElement.Parse(builder.ToString());
+
+            var un = result.DescendantsAndSelf("orbitalConnectionUsername").SingleOrDefault();
+            var pw = result.DescendantsAndSelf("orbitalConnectionPassword").SingleOrDefault();
+         
+            return result;
+        }
+
+        private static XElement SerializeMarkForCaptureResponse(MarkForCaptureResponseElement response)
+        {
+            var builder = new StringBuilder();
+            var serializer = new XmlSerializer(typeof(MarkForCaptureResponseElement));
+            using (var writer = new StringWriter(builder))
+            {
+                serializer.Serialize(writer, response);
+            }
+            var result = XElement.Parse(builder.ToString());
             return result;
         }
         private static XElement SerializeNewOrderResponse(NewOrderResponseElement response)
@@ -172,6 +199,8 @@ namespace PaymentechGateway.Provider
                 pw.Value = "XXXXX";
             return result;
         }
+
+        
         #endregion
         #region IPaymentechGatewayFacade Implementation
         public ProfileResponse CreatePaymentechProfile(CustomerPaymentInfo paymentInfo)
@@ -187,7 +216,7 @@ namespace PaymentechGateway.Provider
                 {
                     result.MerchantId = request.merchantID;
                     result.ProfileAction = ProfileAction.Create;
-                    result.CustomerRefNum = long.Parse(response.customerRefNum);
+                    result.CustomerRefNum = response.customerRefNum;
                 }
                 else
                 {
@@ -214,7 +243,7 @@ namespace PaymentechGateway.Provider
                 result.TransactionResponse = SerializeNewOrderResponse(response);
                 if (response.procStatus == "0" && response.procStatusMessage.ToLower()=="approved")
                 {
-                    result.ApprovalCode = response.authorizationCode;
+                    result.AuthorizationCode = response.authorizationCode;
                     result.TransactionRefNum = response.txRefNum;
                     if (response.transType == "AC")
                         result.PaymentStatus = PaymentStatus.AuthorizedForCapture;
@@ -249,7 +278,7 @@ namespace PaymentechGateway.Provider
                 {
                     result.MerchantId = _settings.RecurringMerchantId;
                     result.ProfileAction = ProfileAction.Create;
-                    result.CustomerRefNum = long.Parse(response.customerRefNum);
+                    result.CustomerRefNum = response.customerRefNum;
 
                 }
                 else
@@ -263,10 +292,79 @@ namespace PaymentechGateway.Provider
             }
             return result;
         }
-        #endregion
 
+        public NewOrderResponse CaptureAuthPayment(CaptureAuthPaymentRequest captureAuthPaymentRequest)
+        {
+            var result = new NewOrderResponse();
+            var request = MapNewOrderCaptureRequest(captureAuthPaymentRequest);
+            var client = GetClient();
+            var response = client.NewOrder(request);
+            if (response.procStatus == "0")
+            {
+                result.TransactionRefNum = response.txRefNum;
+                result.TransactionRequest = SerializeNewOrderRequestElement(request);
+                result.TransactionResponse = SerializeNewOrderResponse(response);
+                result.MerchantId = request.merchantID;
+                result.PaymentStatus = PaymentStatus.Captured;
+
+            }
+            else
+            {
+                result.ErrorMessage = response.procStatusMessage;
+            }
+            return result;
+        }
+        public NewOrderResponse MarkForCapture(CaptureAuthPaymentRequest captureAuthPaymentRequest)
+        {
+            var result = new NewOrderResponse();
+            var request = MapCaptureRequest(captureAuthPaymentRequest);
+
+            var client = GetClient();
+            var response = client.MarkForCapture(request);
+            if (response.procStatus == "0" && response.amount == request.amount)
+            {
+                result.TransactionRefNum = response.txRefNum;
+                result.TransactionRequest = SerializeMarkForCaptureRequest(request);
+                result.TransactionResponse = SerializeMarkForCaptureResponse(response);
+                result.MerchantId = request.merchantID;
+                result.PaymentStatus = PaymentStatus.Captured;
+
+            }
+            else
+            {
+                result.ErrorMessage = response.procStatusMessage;
+            }
+            return result;
+        }
+        #endregion
         #region Mapping
 
+        private NewOrderRequestElement MapNewOrderCaptureRequest(CaptureAuthPaymentRequest request)
+        {
+            var result = new NewOrderRequestElement();
+            result.amount = GetAmount(request.OrderTotal);
+            result.bin = _settings.Bin;
+            result.orbitalConnectionUsername = _settings.Username;
+            result.orbitalConnectionPassword = _settings.Password;
+            result.terminalID = _settings.TerminalId;
+            result.merchantID = _settings.MerchantId;
+            result.orderID = request.GatewayOrderId;
+            result.customerRefNum = request.CustomerRefNum;
+            result.industryType = "EC";
+
+            result.orderID = request.GatewayOrderId;
+            result.profileOrderOverideInd = "NO";
+            result.taxInd = "2";
+            if (request.OrderTax > 0)
+            {
+                result.taxAmount = GetAmount(request.OrderTax);
+                result.taxInd = "1";
+            }
+            result.txRefNum = request.TransactionRefNum;
+            result.priorAuthCd = request.AuthorizationCode;
+            result.transType = "FC";
+            return result;
+        }
         private ProfileAddElement MapRecurringProfileAddElement(RecurringBillingRequest request)
         {
             var result = MapProfileAddElement(request.CustomerPaymentInfo);
@@ -295,9 +393,28 @@ namespace PaymentechGateway.Provider
             return result;
 
         }
+        private MarkForCaptureElement MapCaptureRequest(CaptureAuthPaymentRequest request)
+        {
+            var result = new MarkForCaptureElement();
+            result.bin = _settings.Bin;
+            result.orbitalConnectionUsername = _settings.Username;
+            result.orbitalConnectionPassword = _settings.Password;
+            result.terminalID = _settings.TerminalId;
+            result.merchantID = _settings.MerchantId;
+            result.txRefNum = request.TransactionRefNum;
+            result.amount = GetAmount(request.OrderTotal);
+            result.taxInd = "2";
 
+            if (request.OrderTax > 0)
+            {
+                result.taxAmount = GetAmount(request.OrderTax);
+                result.taxInd = "1";
+            }
 
+            result.orderID = request.GatewayOrderId;
+            return result;
 
+        }
         private NewOrderRequestElement MapNewOrderRequestElement(NewOrderRequest request)
         {
             var result = new NewOrderRequestElement();
@@ -311,7 +428,7 @@ namespace PaymentechGateway.Provider
 
             result.customerRefNum = request.CustomerRefNum;
             result.industryType = "EC";
-            result.merchantID = _settings.MerchantId;
+ 
             result.orderID = request.GatewayOrderId;
             result.profileOrderOverideInd = "NO";
             result.taxInd = "2";

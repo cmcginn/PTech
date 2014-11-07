@@ -16,7 +16,7 @@ namespace PaymentechGateway.Provider
     }
     public class ProfileResponse
     {
-        public long CustomerRefNum { get; set; }
+        public string CustomerRefNum { get; set; }
         public bool Success { get { return String.IsNullOrEmpty(ErrorMessage); } }
         public string ErrorMessage { get; set; }
         public string MerchantId { get; set; }

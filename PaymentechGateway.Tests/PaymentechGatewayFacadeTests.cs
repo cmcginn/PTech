@@ -12,7 +12,7 @@ namespace PaymentechGateway.Tests
         IPaymentechGatewayFacade GetTarget()
         {
             var settings = new PaymentechGatewaySettings();
-            settings.Bin = "001";
+  
             settings.Bin = "000001";
             settings.TerminalId = "001";
             settings.Username = ConfigurationManager.AppSettings["username"];
@@ -77,16 +77,26 @@ namespace PaymentechGateway.Tests
             result.RecurringFrequency = RecurringFrequency.Monthly;
             return result;
         }
+
+        #region Common Test Methods
+
+        ProfileResponse CreatePaymentechProfile()
+        {
+            var target = GetTarget();
+            var cp = new CustomerPaymentInfo { EmailAddress = "GoodRGCustomer@donotresolve.com" };
+            cp.CardInfo = GetCardInfo();
+            cp.BillingAddressInfo = GetBillingAddressInfo();
+            var result = target.CreatePaymentechProfile(cp);
+            return result;
+        }
+        #endregion
         [TestMethod]
         public void CreatePaymentechProfileTest()
         {
-            var target = GetTarget();
-            var cp = new CustomerPaymentInfo {EmailAddress = "GoodRGCustomer@donotresolve.com"};
-            cp.CardInfo = GetCardInfo();
-            cp.BillingAddressInfo = GetBillingAddressInfo();
-            var actual = target.CreatePaymentechProfile(cp);
+
+            var actual = CreatePaymentechProfile();
             Assert.IsTrue(actual.Success);
-            Assert.IsTrue(actual.CustomerRefNum > 0);
+            Assert.IsTrue(long.Parse(actual.CustomerRefNum) > 0);
         }
 
         [TestMethod]
@@ -103,8 +113,28 @@ namespace PaymentechGateway.Tests
             var target = GetTarget();
             var request = GetRecurringBillingRequest();
             var actual = target.CreatePaymentechRecurringProfile(request);
-            Assert.IsTrue(actual.CustomerRefNum > 0);
+            Assert.IsTrue(long.Parse(actual.CustomerRefNum) > 0);
             Assert.IsTrue(actual.Success);
+        }
+
+        [TestMethod]
+        public void CaptureAuthPaymentTest()
+        {
+            var target = GetTarget();
+            var profile = CreatePaymentechProfile();
+            var authOrder = GetNewOrderRequest();
+            authOrder.CustomerRefNum = profile.CustomerRefNum;
+            authOrder.ShippingRequired = true;
+            var authResponse = target.ProcessNewOrderPayment(authOrder);
+            var request = new CaptureAuthPaymentRequest();
+            request.CustomerRefNum = authOrder.CustomerRefNum;
+            request.TransactionRefNum = authResponse.TransactionRefNum;
+            request.OrderTotal = authOrder.OrderTotal;
+            request.OrderTax = authOrder.OrderTax;
+            request.AuthorizationCode = authResponse.AuthorizationCode;
+            request.GatewayOrderId = authOrder.GatewayOrderId;
+            target.CaptureAuthPayment(request);
+
         }
         #region Conditional Check Tests
         [TestMethod]
@@ -113,7 +143,7 @@ namespace PaymentechGateway.Tests
             var target = GetTarget();
             var newOrder = GetNewOrderRequest();
             var actual = target.ProcessNewOrderPayment(newOrder);
-            Assert.IsTrue(!String.IsNullOrEmpty(actual.ApprovalCode));
+            Assert.IsTrue(!String.IsNullOrEmpty(actual.AuthorizationCode));
         }
         [TestMethod]
         public void ProcessNewOrderPaymentTest_WhenShippingRequired_CheckPaymentStatus_Authorized()
@@ -152,7 +182,6 @@ namespace PaymentechGateway.Tests
             Assert.IsNotNull(actual.TransactionRequest);
             Assert.IsNotNull(actual.TransactionResponse);
         }
-
         [TestMethod]
         public void CreatePaymentechProfileTest_When_LifetimeMembership_CheckMaxBilling()
         {
@@ -162,7 +191,7 @@ namespace PaymentechGateway.Tests
             request.RecurringFrequency = RecurringFrequency.Lifetime;
             request.RecurringAmount = 100.80d;
             var actual = target.CreatePaymentechRecurringProfile(request);
-            Assert.IsTrue(actual.CustomerRefNum > 0);
+            Assert.IsTrue(long.Parse(actual.CustomerRefNum) > 0);
             Assert.IsTrue(actual.Success);
         }
         #endregion

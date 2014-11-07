@@ -42,6 +42,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BillingAddressInfo.cs" />
+    <Compile Include="CaptureAuthPaymentRequest.cs" />
+    <Compile Include="CaptureRequest.cs" />
     <Compile Include="CardInfo.cs" />
     <Compile Include="Class1.cs" />
     <Compile Include="CustomerPaymentInfo.cs" />
