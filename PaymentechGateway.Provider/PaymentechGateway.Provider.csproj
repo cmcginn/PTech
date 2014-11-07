@@ -45,8 +45,8 @@
     <Compile Include="CardInfo.cs" />
     <Compile Include="CustomerProfile.cs" />
     <Compile Include="IPaymentechGatewayFacade.cs" />
-    <Compile Include="NewOrderRequest.cs" />
-    <Compile Include="NewOrderResponse.cs" />
+    <Compile Include="OrderRequest.cs" />
+    <Compile Include="OrderResponse.cs" />
     <Compile Include="OrderBase.cs" />
     <Compile Include="OrderRequestBase.cs" />
     <Compile Include="OrderResponseBase.cs" />

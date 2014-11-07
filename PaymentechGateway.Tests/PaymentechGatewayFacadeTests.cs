@@ -25,9 +25,9 @@ namespace PaymentechGateway.Tests
             return new PaymentechGatewayFacade(settings);
         }
 
-        NewOrderRequest GetNewOrderRequest()
+        OrderRequest GetNewOrderRequest()
         {
-            var result = new NewOrderRequest();
+            var result = new OrderRequest();
             result.CustomerRefNum = "49100650";
             result.GatewayOrderId = Guid.NewGuid().ToString().Replace("-", "").Substring(0, 22);
             result.OrderShipping = 5.00d;
@@ -82,7 +82,7 @@ namespace PaymentechGateway.Tests
         ProfileResponse CreatePaymentechProfile()
         {
             var target = GetTarget();
-            var cp = new CustomerProfile { EmailAddress = "GoodRGCustomer@donotresolve.com" };
+            var cp = new CustomerProfile { EmailAddress = "GoodRGCustomer@donotresolve.com"};
             cp.CardInfo = GetCardInfo();
             cp.BillingAddressInfo = GetBillingAddressInfo();
             var result = target.CreatePaymentechProfile(cp);
@@ -152,6 +152,40 @@ namespace PaymentechGateway.Tests
             request.AuthorizationCode = refundResponse.AuthorizationCode;
             request.GatewayOrderId = refundOrder.GatewayOrderId;
             target.Refund(request);
+        }
+
+        [TestMethod]
+        public void FetchProfileTest()
+        {
+            var target = GetTarget();
+            var profile = CreatePaymentechProfile();
+            var actual = target.FetchProfile(profile.CustomerRefNum, false);
+            Assert.IsTrue(actual.ProfileAction == ProfileAction.Fetch,"Expected Profile Action Fetch");
+            Assert.IsTrue(actual.MerchantId == profile.MerchantId,"Expected MerchantId Match");
+            Assert.IsTrue(actual.CustomerRefNum == profile.CustomerRefNum,"Expected Customer Ref Num Match");
+        }
+
+        [TestMethod]
+        public void UpdateProfileTest()
+        {
+            var target = GetTarget();
+            var profile = CreatePaymentechProfile();
+            profile.CardInfo.CardholderName = "CHANGED RG CUST";
+            target.UpdateProfile(profile);
+            var actual = target.FetchProfile(profile.CustomerRefNum, false);
+            Assert.IsTrue(actual.CardInfo.CardholderName == profile.CardInfo.CardholderName,"Expected Cardholder Name Match");
+
+        }
+
+        [TestMethod]
+        public void VoidTest()
+        {
+            var target = GetTarget();
+            var newOrder = GetNewOrderRequest();
+            var order = target.ProcessNewOrderPayment(newOrder);
+            var request = new PriorOrderRequest {TransactionRefNum = order.TransactionRefNum, MerchantId = order.MerchantId, GatewayOrderId=order.GatewayOrderId};
+            var actual = target.Void(request);
+
         }
         #region Conditional Check Tests
         [TestMethod]

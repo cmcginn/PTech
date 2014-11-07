@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 
 namespace PaymentechGateway.Provider
 {
-    public class NewOrderResponse:OrderResponseBase
+    public class OrderRequest : OrderRequestBase
     {
 
     }
+
+   
 }

@@ -209,6 +209,9 @@ namespace PaymentechGateway.Provider
             try
             {
                 var request = MapProfileAddElement(customerProfile);
+                //when creating new profile we can only use CCAccountNum not customer refnum
+                request.customerRefNum = null;
+                request.merchantID = _settings.MerchantId;
                 var client = GetClient();
                 var response = client.ProfileAdd(request);
                 result = MapProfileResponseElement(response);
@@ -221,16 +224,20 @@ namespace PaymentechGateway.Provider
             return result;
 
         }
-        public NewOrderResponse ProcessNewOrderPayment(NewOrderRequest newOrderRequest)
+        public OrderResponse ProcessNewOrderPayment(OrderRequest newOrderRequest)
         {
-            var result = new NewOrderResponse();
+            var result = new OrderResponse();
             try
             {
                 var request = MapNewOrderRequest(newOrderRequest);
+                request.merchantID = _settings.MerchantId;
+                
                 result.TransactionRequest = SerializeNewOrderRequestElement(request);
                 var client = GetClient();
                 var response = client.NewOrder(request);
                 result.TransactionResponse = SerializeNewOrderResponse(response);
+                result.GatewayOrderId = response.orderID;
+                result.MerchantId = response.merchantID;
                 if (response.procStatus == "0" && response.procStatusMessage.ToLower()=="approved")
                 {
                     result.AuthorizationCode = response.authorizationCode;
@@ -272,30 +279,10 @@ namespace PaymentechGateway.Provider
             }
             return result;
         }
-        public NewOrderResponse CaptureAuthPayment(PriorOrderRequest captureAuthPaymentRequest)
-        {
-            var result = new NewOrderResponse();
-            var request = MapNewOrderCaptureRequest(captureAuthPaymentRequest);
-            var client = GetClient();
-            var response = client.NewOrder(request);
-            if (response.procStatus == "0")
-            {
-                result.TransactionRefNum = response.txRefNum;
-                result.TransactionRequest = SerializeNewOrderRequestElement(request);
-                result.TransactionResponse = SerializeNewOrderResponse(response);
-                result.MerchantId = request.merchantID;
-                result.PaymentStatus = PaymentStatus.Captured;
 
-            }
-            else
-            {
-                result.ErrorMessage = response.procStatusMessage;
-            }
-            return result;
-        }
-        public NewOrderResponse MarkForCapture(PriorOrderRequest captureAuthPaymentRequest)
+        public OrderResponse CaptureAuthPayment(PriorOrderRequest captureAuthPaymentRequest)
         {
-            var result = new NewOrderResponse();
+            var result = new OrderResponse();
             var request = MapPriorOrderMarkForCapture(captureAuthPaymentRequest);
 
             var client = GetClient();
@@ -315,9 +302,9 @@ namespace PaymentechGateway.Provider
             }
             return result;
         }
-        public NewOrderResponse Refund(PriorOrderRequest refundPaymentRequest)
+        public OrderResponse Refund(PriorOrderRequest refundPaymentRequest)
         {
-            var result = new NewOrderResponse();
+            var result = new OrderResponse();
             var request = MapNewOrderRefundRequest(refundPaymentRequest);
             var client = GetClient();
             var response = client.NewOrder(request);
@@ -336,9 +323,51 @@ namespace PaymentechGateway.Provider
             }
             return result;
         }
+
+        public OrderResponse Void(PriorOrderRequest voidPaymentRequest)
+        {
+            OrderResponse result = null;
+            var request = MapReversalElement(voidPaymentRequest);
+            var c = GetClient();
+            var response = c.Reversal(request);
+            result = new OrderResponse();
+            return result;
+        }
+        public ProfileResponse FetchProfile(string customerRefNum, bool recurring = false)
+        {
+            ProfileResponse result = null;
+            var request = new ProfileFetchElement();
+            request.merchantID = recurring ? _settings.RecurringMerchantId : _settings.MerchantId;
+            request.customerRefNum = customerRefNum;
+            request.orbitalConnectionUsername = _settings.Username;
+            request.orbitalConnectionPassword = _settings.Password;
+            request.bin = _settings.Bin;
+            var client = GetClient();
+            var response = client.ProfileFetch(request);
+            result = MapProfileResponseElement(response);
+            return result;
+        }
+
+        public ProfileResponse CancelRecurringProfile(string customerRefNum)
+        {
+            throw new System.NotImplementedException();
+        }
+
+        public ProfileResponse UpdateProfile(CustomerProfile customerProfile)
+        {
+            ProfileResponse result = null;
+            var request = MapProfileChangeElement(customerProfile);
+            
+            var client = GetClient();
+            var response = client.ProfileChange(request);
+            result = MapProfileResponseElement(response);
+            return result;
+        }
         #endregion
         #region Mapping
         #region Requests
+
+        
         private NewOrderRequestElement MapNewOrderRequest(OrderRequestBase request)
         {
             var result = MapNewOrderRequestBase(request);
@@ -456,53 +485,103 @@ namespace PaymentechGateway.Provider
             return result;
 
         }
-    
-        private ProfileAddElement MapProfileAddElement(CustomerProfile paymentInfo)
+        private ProfileAddElement MapProfileAddElement(CustomerProfile customerProfile)
         {
 
             var result = new ProfileAddElement();
             result.version = "2.8";
             result.orbitalConnectionPassword = _settings.Password;
             result.orbitalConnectionUsername = _settings.Username;
-            result.merchantID = _settings.MerchantId;
             result.bin = _settings.Bin;
             result.customerProfileFromOrderInd = "NO";
             var eligibleAccountUpdaterBrands = new List<string> { "visa", "mastercard" };
-            var brand = paymentInfo.CardInfo.CardBrand;
+            var brand = customerProfile.CardInfo.CardBrand;
             result.accountUpdaterEligibility = eligibleAccountUpdaterBrands.Contains(brand) ? "Y" : "N";
             result.customerProfileOrderOverideInd = "OA";
             result.customerProfileFromOrderInd = "A";
             result.customerAccountType = "CC";
-            result.ccAccountNum = paymentInfo.CardInfo.CardNumber;
-            result.ccExp = paymentInfo.CardInfo.ExpirationDate;
-            result.customerEmail = paymentInfo.EmailAddress;
-            result.customerName = paymentInfo.CardInfo.CardholderName;
-            if (paymentInfo.BillingAddressInfo != null)
+            result.ccAccountNum = customerProfile.CardInfo.CardNumber;
+            result.ccExp = customerProfile.CardInfo.ExpirationDate;
+            result.customerEmail = customerProfile.EmailAddress;
+            result.customerName = customerProfile.CardInfo.CardholderName;
+            if (customerProfile.BillingAddressInfo != null)
             {
-                result.customerAddress1 = paymentInfo.BillingAddressInfo.Address1;
+                result.customerAddress1 = customerProfile.BillingAddressInfo.Address1;
                 //Chase likes address 2 to be 1 if its present just .... Because
-                if (!String.IsNullOrEmpty(paymentInfo.BillingAddressInfo.Address2))
+                if (!String.IsNullOrEmpty(customerProfile.BillingAddressInfo.Address2))
                 {
-                    result.customerAddress1 = paymentInfo.BillingAddressInfo.Address2;
-                    result.customerAddress2 = paymentInfo.BillingAddressInfo.Address1;
+                    result.customerAddress1 = customerProfile.BillingAddressInfo.Address2;
+                    result.customerAddress2 = customerProfile.BillingAddressInfo.Address1;
                 }
-                result.customerCity = paymentInfo.BillingAddressInfo.City;
-                result.customerCountryCode = paymentInfo.BillingAddressInfo.Country;
-                result.customerState = paymentInfo.BillingAddressInfo.StateProvince;
-                result.customerPhone = paymentInfo.BillingAddressInfo.PhoneNumber;
-                result.customerZIP = paymentInfo.BillingAddressInfo.PostalCode;
+                result.customerCity = customerProfile.BillingAddressInfo.City;
+                result.customerCountryCode = customerProfile.BillingAddressInfo.Country;
+                result.customerState = customerProfile.BillingAddressInfo.StateProvince;
+                result.customerPhone = customerProfile.BillingAddressInfo.PhoneNumber;
+                result.customerZIP = customerProfile.BillingAddressInfo.PostalCode;
                 
 
             }
             return result;
 
         }
+
+        private ProfileChangeElement MapProfileChangeElement(CustomerProfile customerProfile)
+        {
+            var result = new ProfileChangeElement();
+            result.version = "2.8";
+            result.orbitalConnectionPassword = _settings.Password;
+            result.orbitalConnectionUsername = _settings.Username;
+            result.merchantID = customerProfile.MerchantId;
+            result.bin = _settings.Bin;
+            var eligibleAccountUpdaterBrands = new List<string> { "visa", "mastercard" };
+            var brand = customerProfile.CardInfo.CardBrand;
+            result.accountUpdaterEligibility = eligibleAccountUpdaterBrands.Contains(brand) ? "Y" : "N";
+            result.customerProfileOrderOverideInd = "OA";
+
+            result.customerAccountType = "CC";
+            result.customerRefNum = customerProfile.CustomerRefNum;
+            result.ccExp = customerProfile.CardInfo.ExpirationDate;
+            result.customerEmail = customerProfile.EmailAddress;
+            result.customerName = customerProfile.CardInfo.CardholderName;
+            if (customerProfile.BillingAddressInfo != null)
+            {
+                result.customerAddress1 = customerProfile.BillingAddressInfo.Address1;
+                //Chase likes address 2 to be 1 if its present just .... Because
+                if (!String.IsNullOrEmpty(customerProfile.BillingAddressInfo.Address2))
+                {
+                    result.customerAddress1 = customerProfile.BillingAddressInfo.Address2;
+                    result.customerAddress2 = customerProfile.BillingAddressInfo.Address1;
+                }
+                result.customerCity = customerProfile.BillingAddressInfo.City;
+                result.customerCountryCode = customerProfile.BillingAddressInfo.Country;
+                result.customerState = customerProfile.BillingAddressInfo.StateProvince;
+                result.customerPhone = customerProfile.BillingAddressInfo.PhoneNumber;
+                result.customerZIP = customerProfile.BillingAddressInfo.PostalCode;
+
+
+            }
+            return result;
+        }
+        private ReversalElement MapReversalElement(PriorOrderRequest request)
+        {
+            var result = new ReversalElement();
+            result.version = "2.8";
+            result.orbitalConnectionPassword = _settings.Password;
+            result.orbitalConnectionUsername = _settings.Username;
+            result.bin = _settings.Bin;
+            result.terminalID = _settings.TerminalId;
+            result.txRefNum = request.TransactionRefNum;
+            result.orderID = request.GatewayOrderId;
+            result.merchantID = request.MerchantId;
+            return result;
+        }
         #endregion
         #region Responses
 
-        public ProfileResponse MapProfileResponseElement(ProfileResponseElement response)
+        private ProfileResponse MapProfileResponseElement(ProfileResponseElement response)
         {
             var result = new ProfileResponse();
+            result.MerchantId = response.merchantID;
             result.CardInfo = new CardInfo();
             result.CardInfo.CardNumber = response.ccAccountNum;
             result.CardInfo.CardholderName = response.customerName;
@@ -526,6 +605,9 @@ namespace PaymentechGateway.Provider
             {
                 case "CREATE":
                     result.ProfileAction = ProfileAction.Create;
+                    break;
+                case "READ":
+                    result.ProfileAction = ProfileAction.Fetch;
                     break;
                 default:
                     break;
