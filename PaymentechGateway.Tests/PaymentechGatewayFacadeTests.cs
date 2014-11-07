@@ -136,6 +136,25 @@ namespace PaymentechGateway.Tests
             target.CaptureAuthPayment(request);
 
         }
+
+        [TestMethod]
+        public void RefundTest()
+        {
+            var target = GetTarget();
+            var profile = CreatePaymentechProfile();
+            var refundOrder = GetNewOrderRequest();
+            refundOrder.CustomerRefNum = profile.CustomerRefNum;
+            var refundResponse = target.ProcessNewOrderPayment(refundOrder);
+            var request = new RefundPaymentRequest();
+            request.CustomerRefNum = refundOrder.CustomerRefNum;
+            request.TransactionRefNum = refundResponse.TransactionRefNum;
+            request.OrderTotal = refundOrder.OrderTotal;
+            request.OrderTax = refundOrder.OrderTax;
+            request.RefundTotal = refundOrder.OrderTotal;
+            request.AuthorizationCode = refundResponse.AuthorizationCode;
+            request.GatewayOrderId = refundOrder.GatewayOrderId;
+            target.Refund(request);
+        }
         #region Conditional Check Tests
         [TestMethod]
         public void ProcessNewOrderPaymentTest_Check_AuthorizationCode_Exists()

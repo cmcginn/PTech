@@ -230,7 +230,6 @@ namespace PaymentechGateway.Provider
             return result;
 
         }
-
         public NewOrderResponse ProcessNewOrderPayment(NewOrderRequest newOrderRequest)
         {
             var result = new NewOrderResponse();
@@ -265,7 +264,6 @@ namespace PaymentechGateway.Provider
             }
             return result;
         }
-
         public ProfileResponse CreatePaymentechRecurringProfile(RecurringBillingRequest recurringBillingRequest)
         {
             var result = new ProfileResponse();
@@ -292,7 +290,6 @@ namespace PaymentechGateway.Provider
             }
             return result;
         }
-
         public NewOrderResponse CaptureAuthPayment(CaptureAuthPaymentRequest captureAuthPaymentRequest)
         {
             var result = new NewOrderResponse();
@@ -336,9 +333,58 @@ namespace PaymentechGateway.Provider
             }
             return result;
         }
+
+        public NewOrderResponse Refund(RefundPaymentRequest refundPaymentRequest)
+        {
+            var result = new NewOrderResponse();
+            var request = MapNewOrderRefundRequest(refundPaymentRequest);
+
+            var client = GetClient();
+            var response = client.NewOrder(request);
+            if (response.procStatus == "0")
+            {
+                result.TransactionRefNum = response.txRefNum;
+                result.TransactionRequest = SerializeNewOrderRequestElement(request);
+                result.TransactionResponse = SerializeNewOrderResponse(response);
+                result.MerchantId = request.merchantID;
+                result.PaymentStatus = PaymentStatus.Captured;
+
+            }
+            else
+            {
+                result.ErrorMessage = response.procStatusMessage;
+            }
+            return result;
+        }
         #endregion
         #region Mapping
+        //private NewOrderRequestElement
+        private NewOrderRequestElement MapNewOrderRefundRequest(RefundPaymentRequest request)
+        {
+            var result = new NewOrderRequestElement();
+            result.amount = GetAmount(request.OrderTotal);
+            result.bin = _settings.Bin;
+            result.orbitalConnectionUsername = _settings.Username;
+            result.orbitalConnectionPassword = _settings.Password;
+            result.terminalID = _settings.TerminalId;
+            result.merchantID = _settings.MerchantId;
+            result.orderID = request.GatewayOrderId;
+            result.customerRefNum = request.CustomerRefNum;
+            result.industryType = "EC";
 
+            result.orderID = request.GatewayOrderId;
+            result.profileOrderOverideInd = "NO";
+            result.taxInd = "2";
+            if (request.OrderTax > 0)
+            {
+                result.taxAmount = GetAmount(request.RefundTotal);
+                result.taxInd = "1";
+            }
+            result.txRefNum = request.TransactionRefNum;
+            result.priorAuthCd = request.AuthorizationCode;
+            result.transType = "R";
+            return result;
+        }
         private NewOrderRequestElement MapNewOrderCaptureRequest(CaptureAuthPaymentRequest request)
         {
             var result = new NewOrderRequestElement();
